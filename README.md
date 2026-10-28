@@ -22,6 +22,7 @@ paediatric dataset (5 272 recordings, 1 568 subjects) under controlled noise.
 |---|---|
 | Butterworth bandpass (25–400 Hz, zero-phase) | `cardiofilter/filters/bandpass.py` |
 | Wavelet denoising (`coif4`, universal or BayesShrink thresholds) | `cardiofilter/filters/wavelet.py` |
+| Mains-hum notch cascade with automatic 50/60 Hz detection | `cardiofilter/filters/notch.py` |
 | Noise models: white, pink, mains hum, rumble, ambient, mixed at a target SNR | `cardiofilter/noise.py` |
 | Shannon-energy and homomorphic envelopes | `cardiofilter/envelope.py` |
 | S1/S2 detector (period estimate → peak picking → interval labelling) | `cardiofilter/detection.py` |
@@ -133,7 +134,12 @@ Three findings carry over to the hardware:
    backwards so S1/S2 timing is not shifted. `wavelet` decomposes the signal into five
    levels with `coif4` and soft-thresholds every detail band using the universal
    threshold `σ·sqrt(2 ln N)` (σ from the finest band's median absolute deviation);
-   `wavelet_bayes` uses per-level BayesShrink thresholds instead.
+   `wavelet_bayes` uses per-level BayesShrink thresholds instead. `notch` removes
+   mains hum with zero-phase IIR notches at the fundamental and two harmonics after
+   picking 50 or 60 Hz from the spectrum, and leaves the signal alone when no hum is
+   detected. Combined methods chain these; the wavelet
+   stage then measures the noise level on the raw signal, because after a bandpass
+   the finest wavelet band is empty.
 2. **Envelope.** The normalised average Shannon energy (20 ms windows, 10 ms hop)
    turns each heart sound into a clean bump.
 3. **Period.** The cardiac period comes from the autocorrelation of a smoother

@@ -16,10 +16,18 @@ WAV (4 kHz) ─► noise injection (experiments only) ─► filter ─► Shann
 | `bandpass` | 4th-order Butterworth, 25–400 Hz, zero-phase (`sosfiltfilt`) | `BandpassConfig(low_hz, high_hz, order)` |
 | `wavelet` | DWT (`coif4`, 5 levels), universal soft threshold on all detail bands | `WaveletConfig(wavelet, level, rule, mode, scale)` |
 | `wavelet_bayes` | As above with per-level BayesShrink thresholds | `rule="bayes"` |
-| `bandpass+wavelet` | Bandpass first, then wavelet denoising | – |
+| `bandpass+wavelet` | Bandpass, then universal-threshold wavelet denoising with σ estimated on the raw signal | – |
+| `bandpass+wavelet_bayes` | Bandpass, then BayesShrink wavelet denoising with σ estimated on the raw signal | – |
+| `notch+bandpass` | Zero-phase IIR notches at the mains fundamental and two harmonics (Q = 30; 50 or 60 Hz chosen from the spectrum, applied only when hum is detected), then bandpass | `NotchConfig(freq_hz, harmonics, q, min_hum_ratio)` |
+| `notch+bandpass+wavelet_bayes` | Notch, bandpass, then BayesShrink wavelet denoising | – |
 
 Noise σ for the thresholds is the median absolute deviation of the finest detail
-band divided by 0.6745.
+band divided by 0.6745. In the combined methods σ is measured on the raw signal
+before the bandpass, because after the bandpass the finest band is empty. The mains
+frequency is picked by comparing the power within ±0.5 Hz of 50 and 60 Hz to the power
+within ±5 Hz of each; the notch is applied only when that ratio exceeds 0.3 (clean
+CirCor recordings stay below 0.26, hum at ≤ 10 dB SNR exceeds 0.39), so recordings
+without hum keep their full heart-sound spectrum.
 
 ## Noise models (`cardiofilter.noise`)
 
@@ -75,3 +83,11 @@ cardiofilter experiment --data data/circor/training_data --out results
 ```
 
 Without the dataset: `cardiofilter experiment --synthetic 5 --out results-synthetic`.
+
+Held-out evaluation on subjects the detector was not tuned on:
+
+```bash
+cardiofilter download --dest data/holdout --subjects 40 --skip 12
+cardiofilter experiment --data data/holdout/training_data --out results-holdout --snr -5 5
+python scripts/write_results.py results docs/results.md README.md results-holdout
+```

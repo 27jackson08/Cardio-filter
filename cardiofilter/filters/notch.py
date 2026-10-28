@@ -21,11 +21,16 @@ class NotchConfig:
     """Parameters of the hum notch cascade."""
 
     freq_hz: float | None = None
-    """Mains fundamental; ``None`` picks 50 or 60 Hz from the signal's spectrum."""
+    """Mains fundamental; ``None`` picks 50 or 60 Hz from the signal's spectrum and
+    applies the notch only when hum is actually present (see ``min_hum_ratio``)."""
     harmonics: int = 3
     """Number of notched tones, fundamental included."""
     q: float = 30.0
     """Quality factor of each notch (centre frequency / −3 dB bandwidth)."""
+    min_hum_ratio: float = 0.3
+    """In automatic mode, notch only if the ±0.5 Hz band around the mains frequency
+    holds at least this fraction of the power within ±5 Hz. Clean CirCor recordings
+    sit below 0.26; hum at 10 dB SNR or worse sits above 0.39."""
 
     def validate(self, fs: int) -> None:
         if self.freq_hz is not None and self.freq_hz <= 0:
@@ -36,17 +41,28 @@ class NotchConfig:
             raise ValueError("q must be positive")
         if self.freq_hz is not None and self.freq_hz >= fs / 2:
             raise ValueError("freq_hz must be below Nyquist")
+        if not 0 <= self.min_hum_ratio <= 1:
+            raise ValueError("min_hum_ratio must lie in [0, 1]")
+
+
+@dataclass(frozen=True)
+class MainsEstimate:
+    """Most likely mains frequency and how tonal the signal is there."""
+
+    freq_hz: float
+    ratio: float
+    """Power within ±0.5 Hz of ``freq_hz`` over power within ±5 Hz (1.0 = pure tone)."""
 
 
 DEFAULT_NOTCH = NotchConfig()
 
 
-def estimate_mains_frequency(
+def detect_mains(
     x: np.ndarray, fs: int, candidates: tuple[float, ...] = MAINS_CANDIDATES_HZ
-) -> float:
-    """Pick the candidate mains frequency with the most power relative to its surroundings.
+) -> MainsEstimate:
+    """Pick the candidate mains frequency with the most tonal power.
 
-    The ratio of power in ±0.5 Hz around the candidate to power in ±5 Hz around it is
+    The ratio of power within ±0.5 Hz of the candidate to power within ±5 Hz is
     compared; the candidate with the larger ratio wins. Ties go to the first candidate.
     """
     x = np.asarray(x, dtype=np.float64)
@@ -61,7 +77,14 @@ def estimate_mains_frequency(
         ratio = narrow / wide if wide > 0 else 0.0
         if ratio > best_ratio:
             best, best_ratio = candidate, ratio
-    return float(best)
+    return MainsEstimate(freq_hz=float(best), ratio=float(best_ratio))
+
+
+def estimate_mains_frequency(
+    x: np.ndarray, fs: int, candidates: tuple[float, ...] = MAINS_CANDIDATES_HZ
+) -> float:
+    """Most likely mains frequency (Hz); see :func:`detect_mains`."""
+    return detect_mains(x, fs, candidates).freq_hz
 
 
 def design_notch(fs: int, config: NotchConfig = DEFAULT_NOTCH, freq_hz: float | None = None):
@@ -81,11 +104,22 @@ def design_notch(fs: int, config: NotchConfig = DEFAULT_NOTCH, freq_hz: float | 
 
 
 def notch(x: np.ndarray, fs: int, config: NotchConfig = DEFAULT_NOTCH) -> np.ndarray:
-    """Remove mains hum and harmonics with zero-phase notches; returns a new array."""
+    """Remove mains hum and harmonics with zero-phase notches; returns a new array.
+
+    With ``config.freq_hz`` unset the mains frequency is detected and the signal is
+    returned unchanged (as a copy) when no hum is present, so clean recordings do not
+    lose the sliver of heart-sound energy the notch would take.
+    """
     x = np.asarray(x, dtype=np.float64)
     if x.ndim != 1:
         raise ValueError("x must be one-dimensional")
     config.validate(fs)
-    freq = config.freq_hz if config.freq_hz is not None else estimate_mains_frequency(x, fs)
+    if config.freq_hz is not None:
+        freq = config.freq_hz
+    else:
+        estimate = detect_mains(x, fs)
+        if estimate.ratio < config.min_hum_ratio:
+            return x.copy()
+        freq = estimate.freq_hz
     sos = design_notch(fs, config, freq)
     return sps.sosfiltfilt(sos, x)

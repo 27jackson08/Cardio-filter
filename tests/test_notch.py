@@ -6,6 +6,7 @@ from cardiofilter.filters import (
     NotchConfig,
     apply_method,
     bandpass,
+    detect_mains,
     estimate_mains_frequency,
     notch,
 )
@@ -58,6 +59,7 @@ def test_notch_is_zero_phase_and_narrow():
         NotchConfig(freq_hz=3000.0),
         NotchConfig(harmonics=0),
         NotchConfig(q=0.0),
+        NotchConfig(min_hum_ratio=1.5),
     ],
 )
 def test_notch_config_validation(cfg):
@@ -84,3 +86,15 @@ def test_new_pipeline_methods_registered(pcg, rng):
     assert snr_db(pcg.signal, notched) > snr_db(pcg.signal, plain) + 10.0
     combo = apply_method("notch+bandpass+wavelet_bayes", noisy, pcg.fs)
     assert combo.shape == noisy.shape and np.isfinite(combo).all()
+
+
+def test_notch_auto_mode_leaves_clean_signal_untouched(pcg):
+    estimate = detect_mains(pcg.signal, pcg.fs)
+    assert estimate.ratio < 0.3
+    out = notch(pcg.signal, pcg.fs)
+    assert np.array_equal(out, pcg.signal) and out is not pcg.signal
+    forced = notch(pcg.signal, pcg.fs, NotchConfig(freq_hz=50.0))
+    assert not np.array_equal(forced, pcg.signal)
+    assert np.array_equal(
+        apply_method("notch+bandpass", pcg.signal, pcg.fs), bandpass(pcg.signal, pcg.fs)
+    )

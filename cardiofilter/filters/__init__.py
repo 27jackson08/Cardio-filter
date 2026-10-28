@@ -1,7 +1,14 @@
 """Filtering methods compared in CardioFilter."""
 
 from cardiofilter.filters.bandpass import DEFAULT_BANDPASS, BandpassConfig, bandpass
-from cardiofilter.filters.notch import DEFAULT_NOTCH, NotchConfig, estimate_mains_frequency, notch
+from cardiofilter.filters.notch import (
+    DEFAULT_NOTCH,
+    MainsEstimate,
+    NotchConfig,
+    detect_mains,
+    estimate_mains_frequency,
+    notch,
+)
 from cardiofilter.filters.pipeline import FILTER_METHODS, apply_method
 from cardiofilter.filters.wavelet import (
     DEFAULT_WAVELET,
@@ -15,11 +22,13 @@ __all__ = [
     "DEFAULT_NOTCH",
     "DEFAULT_WAVELET",
     "FILTER_METHODS",
+    "MainsEstimate",
     "BandpassConfig",
     "NotchConfig",
     "WaveletConfig",
     "apply_method",
     "bandpass",
+    "detect_mains",
     "estimate_mains_frequency",
     "notch",
     "noise_sigma",

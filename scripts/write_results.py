@@ -1,6 +1,6 @@
 """Build docs/results.md and the README results block from an experiment output dir.
 
-Usage: python scripts/write_results.py results docs/results.md README.md
+Usage: python scripts/write_results.py results docs/results.md README.md [results-holdout]
 """
 
 from __future__ import annotations
@@ -20,11 +20,8 @@ def _read(path: Path, text_keys: tuple[str, ...]) -> list[dict[str, object]]:
     return [{k: (v if k in text_keys else float(v)) for k, v in r.items()} for r in rows]
 
 
-def build(results: Path) -> tuple[str, str]:
-    trials = _read(results / "trials.csv", ("record", "noise_type", "method"))
-    base = _read(results / "dataset_eval.csv", ("record", "method"))
-    n_records = len({r["record"] for r in base})
-    as_recorded = xp.markdown_table(
+def _detection_table(base: list[dict[str, object]]) -> str:
+    return xp.markdown_table(
         xp.summarize(base, by=["method"]),
         [
             "method",
@@ -38,6 +35,56 @@ def build(results: Path) -> tuple[str, str]:
         ],
         3,
     )
+
+
+def _holdout_section(holdout: Path | None) -> str:
+    if holdout is None or not (holdout / "dataset_eval.csv").exists():
+        return ""
+    base = _read(holdout / "dataset_eval.csv", ("record", "method"))
+    n_records = len({r["record"] for r in base})
+    n_subjects = len({str(r["record"]).split("_")[0] for r in base})
+    parts = [
+        "## 6. Held-out check",
+        "",
+        f"{n_records} recordings from {n_subjects} subjects that were **not** used to tune "
+        "the detector (`cardiofilter download --skip 12`). Same scoring.",
+        "",
+        "### Detection as recorded (held-out)",
+        "",
+        _detection_table(base),
+    ]
+    trials_path = holdout / "trials.csv"
+    if trials_path.exists():
+        trials = _read(trials_path, ("record", "noise_type", "method"))
+        levels = sorted({float(r["snr_in_db"]) for r in trials})
+        parts += [
+            "",
+            f"### Noise grid (held-out), input SNR {', '.join(f'{v:g}' for v in levels)} dB",
+            "",
+            xp.markdown_table(
+                xp.summarize(trials, by=["method"], metrics=METRICS), ["method", *METRICS], 2
+            ),
+            "",
+            f"### Held-out, hardest condition (input SNR {levels[0]:g} dB)",
+            "",
+            xp.markdown_table(
+                xp.summarize(
+                    [r for r in trials if r["snr_in_db"] == levels[0]],
+                    by=["noise_type", "method"],
+                    metrics=METRICS,
+                ),
+                ["noise_type", "method", "snr_improvement_db", "s1_f1", "s2_f1"],
+                2,
+            ),
+        ]
+    return "\n".join(parts) + "\n"
+
+
+def build(results: Path, holdout: Path | None = None) -> tuple[str, str]:
+    trials = _read(results / "trials.csv", ("record", "noise_type", "method"))
+    base = _read(results / "dataset_eval.csv", ("record", "method"))
+    n_records = len({r["record"] for r in base})
+    as_recorded = _detection_table(base)
     overall = xp.markdown_table(
         xp.summarize(trials, by=["method"], metrics=METRICS), ["method", *METRICS], 2
     )
@@ -144,7 +191,8 @@ loud murmurs that create extra envelope peaks.
   (`hardware/record.py`).
 - Each SNR level is weighted equally in the averages; real recordings cluster at
   0–10 dB.
-"""
+
+{_holdout_section(holdout)}"""
     readme_block = f"""{START}
 On the 44-recording development subset (12 subjects, all four sites), with
 S1/S2 scored against the expert annotations at ±100 ms:
@@ -174,8 +222,8 @@ Three findings carry over to the hardware:
     return doc, readme_block
 
 
-def main(results_dir: str, results_md: str, readme: str) -> int:
-    doc, block = build(Path(results_dir))
+def main(results_dir: str, results_md: str, readme: str, holdout_dir: str | None = None) -> int:
+    doc, block = build(Path(results_dir), Path(holdout_dir) if holdout_dir else None)
     Path(results_md).write_text(doc)
     text = Path(readme).read_text()
     start, end = text.index(START), text.index(END) + len(END)
@@ -185,7 +233,7 @@ def main(results_dir: str, results_md: str, readme: str) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) not in (4, 5):
         print(__doc__)
         raise SystemExit(2)
     raise SystemExit(main(*sys.argv[1:]))
