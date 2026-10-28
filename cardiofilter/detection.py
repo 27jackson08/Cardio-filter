@@ -9,7 +9,8 @@ Pipeline:
    and derive a minimum peak spacing from it.
 4. Pick Shannon-envelope peaks above a prominence threshold.
 5. Label peaks as S1 or S2 using the physiological rule that systole (S1→S2) is
-   shorter than diastole (S2→S1); conflicts are resolved by enforcing alternation.
+   shorter than diastole (S2→S1), decided by majority vote over a window of
+   neighbouring peaks so that one missed beat does not flip the rest.
 
 The default parameters were tuned on a 12-subject development subset of CirCor
 (44 recordings); see ``docs/results.md``.
@@ -92,13 +93,17 @@ def estimate_cardiac_period(envelope: Envelope, dominance: float = 0.7) -> float
     return float((lag_min + candidates[0]) / envelope.fs)
 
 
-def label_s1_s2(peak_times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def label_s1_s2(peak_times: np.ndarray, half_window: int = 4) -> tuple[np.ndarray, np.ndarray]:
     """Split sorted peak times into S1 and S2 using the systole < diastole rule.
 
     Each peak votes S1 when the gap to the next peak is shorter than the gap from the
-    previous one. The vote sequence is then forced to alternate by choosing the
-    starting label that agrees with the most votes.
+    previous one. Labels are then decided locally: for each peak, the alternating
+    assignment that agrees with the most votes among the ``2 * half_window + 1``
+    surrounding peaks is used, so a missed or spurious peak flips the labels only in
+    its neighbourhood rather than for the rest of the recording.
     """
+    if half_window < 0:
+        raise ValueError("half_window must be non-negative")
     peak_times = np.asarray(peak_times, dtype=np.float64)
     n = peak_times.size
     if n == 0:
@@ -109,10 +114,13 @@ def label_s1_s2(peak_times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     prev_gap = np.concatenate([[np.inf], gaps])
     next_gap = np.concatenate([gaps, [np.inf]])
     votes_s1 = next_gap < prev_gap
-    parity = np.arange(n) % 2 == 0
-    agreement_even = np.sum(votes_s1 == parity)
-    agreement_odd = np.sum(votes_s1 == ~parity)
-    is_s1 = parity if agreement_even >= agreement_odd else ~parity
+    index = np.arange(n)
+    is_s1 = np.zeros(n, dtype=bool)
+    for i in range(n):
+        lo, hi = max(0, i - half_window), min(n, i + half_window + 1)
+        same_parity = (index[lo:hi] - i) % 2 == 0
+        agreement = int(np.sum(votes_s1[lo:hi] == same_parity))
+        is_s1[i] = 2 * agreement >= hi - lo
     return peak_times[is_s1], peak_times[~is_s1]
 
 

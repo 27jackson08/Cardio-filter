@@ -67,6 +67,9 @@ def plot_waveform(
     axes = np.atleast_1d(axes)
     for ax, (name, x), colour in zip(axes, signals.items(), CATEGORICAL, strict=False):
         t = np.arange(len(x)) / fs
+        if time_range is not None:
+            keep = (t >= time_range[0]) & (t <= time_range[1])
+            t, x = t[keep], np.asarray(x)[keep]
         ax.plot(t, x, color=colour, linewidth=0.7)
         ax.set_ylabel(name)
         _style(ax)
@@ -113,6 +116,9 @@ def plot_detection(
 ) -> Figure:
     """Waveform with the envelope and detected (and optionally annotated) S1/S2."""
     t = np.arange(len(x)) / fs
+    if time_range is not None:
+        keep = (t >= time_range[0]) & (t <= time_range[1])
+        t, x = t[keep], np.asarray(x)[keep]
     fig, (ax_sig, ax_env) = plt.subplots(2, 1, figsize=(11, 5), sharex=True)
     ax_sig.plot(t, x, color="#7a7975", linewidth=0.6, label="signal")
     ax_env.plot(
@@ -148,11 +154,11 @@ def plot_detection(
         )
     ax_sig.plot([], [], color=S1_COLOR, linewidth=1.4, label="detected S1")
     ax_sig.plot([], [], color=S2_COLOR, linewidth=1.4, linestyle="--", label="detected S2")
-    ax_sig.legend(loc="upper right", ncol=3, fontsize=8, frameon=False)
+    ax_sig.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=5, fontsize=8, frameon=False)
     ax_sig.set_ylabel("Amplitude")
     ax_env.set_ylabel("Envelope (z)")
     ax_env.set_xlabel("Time (s)")
-    ax_sig.set_title(f"{title}  (estimated HR {detection.heart_rate_bpm:.0f} bpm)")
+    fig.suptitle(f"{title}  (estimated HR {detection.heart_rate_bpm:.0f} bpm)")
     for ax in (ax_sig, ax_env):
         _style(ax)
     if time_range is not None:

@@ -81,3 +81,16 @@ def test_estimate_cardiac_period_handles_negative_autocorrelation_peaks():
     assert estimate_cardiac_period(env) == pytest.approx(0.8)
     with pytest.raises(ValueError):
         estimate_cardiac_period(env, dominance=0.0)
+
+
+def test_label_s1_s2_recovers_after_a_missed_peak():
+    cycle = np.array([0.0, 0.3])  # S1 at 0.0, S2 at 0.3 within a 1 s cycle
+    peaks = np.concatenate([cycle + k for k in range(12)])
+    missing = np.delete(peaks, 9)  # drop the S2 of the 5th cycle
+    true_s1 = peaks[::2]
+    windowed_s1, _ = label_s1_s2(missing)
+    global_s1, _ = label_s1_s2(missing, half_window=10_000)
+    assert score_detection(true_s1, windowed_s1, 0.01).f1 >= 0.9
+    assert score_detection(true_s1, global_s1, 0.01).f1 < 0.9
+    with pytest.raises(ValueError):
+        label_s1_s2(missing, half_window=-1)

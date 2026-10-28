@@ -45,7 +45,9 @@ input SNR relative to the recording's mean power.
 4. Peaks: `scipy.signal.find_peaks` with prominence ≥ 0.2 σ and spacing
    ≥ max(120 ms, 0.3 × period).
 5. Labels: each peak votes S1 if its following gap is shorter than its preceding
-   gap; the alternating assignment agreeing with most votes is used.
+   gap (systole < diastole). For every peak, the alternating assignment that agrees
+   with most votes among its 9 nearest peaks is used, so a missed beat only disturbs
+   its neighbourhood.
 
 ## Metrics (`cardiofilter.metrics`)
 

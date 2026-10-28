@@ -7,7 +7,7 @@ from collections.abc import Callable
 import numpy as np
 
 from cardiofilter.filters.bandpass import BandpassConfig, bandpass
-from cardiofilter.filters.wavelet import WaveletConfig, wavelet_denoise
+from cardiofilter.filters.wavelet import WaveletConfig, noise_sigma, wavelet_denoise
 
 FilterFn = Callable[[np.ndarray, int], np.ndarray]
 
@@ -29,7 +29,13 @@ def _wavelet_bayes(x: np.ndarray, fs: int) -> np.ndarray:
 
 
 def _bandpass_wavelet(x: np.ndarray, fs: int) -> np.ndarray:
-    return wavelet_denoise(bandpass(x, fs, BandpassConfig()), WaveletConfig())
+    """Bandpass, then wavelet-threshold using the noise level of the *raw* signal.
+
+    After a bandpass the finest wavelet band is empty, so estimating sigma from the
+    filtered signal would make the wavelet stage a no-op.
+    """
+    sigma = noise_sigma(x, WaveletConfig())
+    return wavelet_denoise(bandpass(x, fs, BandpassConfig()), WaveletConfig(), sigma=sigma)
 
 
 FILTER_METHODS: dict[str, FilterFn] = {

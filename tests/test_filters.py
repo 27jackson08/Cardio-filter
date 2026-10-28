@@ -8,6 +8,7 @@ from cardiofilter.filters import (
     WaveletConfig,
     apply_method,
     bandpass,
+    noise_sigma,
     wavelet_denoise,
 )
 from cardiofilter.filters.wavelet import (
@@ -147,3 +148,25 @@ def test_filter_registry(pcg):
     assert apply_method("none", pcg.signal, pcg.fs) is not pcg.signal
     with pytest.raises(ValueError, match="unknown filter method"):
         apply_method("fft-magic", pcg.signal, pcg.fs)
+
+
+def test_noise_sigma_matches_white_noise_level(pcg, rng):
+    noise = make_noise("white", len(pcg.signal), pcg.fs, rng)
+    noisy = mix_at_snr(pcg.signal, noise, 0.0)
+    expected = float(np.std(noisy - pcg.signal))
+    assert noise_sigma(noisy) == pytest.approx(expected, rel=0.1)
+    with pytest.raises(ValueError):
+        noise_sigma(np.zeros((4, 4)))
+
+
+def test_bandpass_then_wavelet_uses_raw_noise_level(pcg, rng):
+    noise = make_noise("white", len(pcg.signal), pcg.fs, rng)
+    noisy = mix_at_snr(pcg.signal, noise, 0.0)
+    filtered = bandpass(noisy, pcg.fs)
+    # sigma from the bandpassed signal collapses, so the plain call changes little
+    plain = wavelet_denoise(filtered)
+    informed = wavelet_denoise(filtered, sigma=noise_sigma(noisy))
+    assert snr_db(pcg.signal, informed) > snr_db(pcg.signal, plain) + 1.0
+    assert np.allclose(apply_method("bandpass+wavelet", noisy, pcg.fs), informed)
+    with pytest.raises(ValueError):
+        wavelet_denoise(filtered, sigma=-1.0)

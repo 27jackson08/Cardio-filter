@@ -37,7 +37,7 @@ def test_plot_detection_with_and_without_annotations(pcg):
     fig = viz.plot_detection(pcg.signal, pcg.fs, det, seg, time_range=(0, 4))
     assert len(fig.axes) == 2
     fig2 = viz.plot_detection(pcg.signal, pcg.fs, det)
-    assert fig2.axes[0].get_title().startswith("S1/S2 detection")
+    assert fig2.get_suptitle().startswith("S1/S2 detection")
 
 
 def test_plot_metric_vs_snr():

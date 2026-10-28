@@ -88,16 +88,40 @@ def _resolve_level(n: int, wavelet: str, level: int | None) -> int:
 DEFAULT_WAVELET = WaveletConfig()
 
 
-def wavelet_denoise(x: np.ndarray, config: WaveletConfig = DEFAULT_WAVELET) -> np.ndarray:
-    """Denoise ``x`` by thresholding its DWT detail coefficients; returns a new array."""
+def noise_sigma(x: np.ndarray, config: WaveletConfig = DEFAULT_WAVELET) -> float:
+    """Noise sigma of ``x`` from the median absolute deviation of its finest detail band."""
     config.validate()
     x = np.asarray(x, dtype=np.float64)
     if x.ndim != 1:
         raise ValueError("x must be one-dimensional")
+    _resolve_level(len(x), config.wavelet, 1)
+    _, finest = pywt.dwt(x, config.wavelet)
+    return estimate_noise_sigma(finest)
+
+
+def wavelet_denoise(
+    x: np.ndarray, config: WaveletConfig = DEFAULT_WAVELET, sigma: float | None = None
+) -> np.ndarray:
+    """Denoise ``x`` by thresholding its DWT detail coefficients; returns a new array.
+
+    Args:
+        x: One-dimensional signal.
+        config: Wavelet, level and threshold rule.
+        sigma: Noise standard deviation to use for the thresholds. By default it is
+            estimated from ``x``'s finest detail band; pass a value when ``x`` has
+            already been bandpassed (that band is then empty and the estimate collapses).
+    """
+    config.validate()
+    x = np.asarray(x, dtype=np.float64)
+    if x.ndim != 1:
+        raise ValueError("x must be one-dimensional")
+    if sigma is not None and sigma < 0:
+        raise ValueError("sigma must be non-negative")
     level = _resolve_level(len(x), config.wavelet, config.level)
     coeffs = pywt.wavedec(x, config.wavelet, level=level)
     approx, details = coeffs[0], coeffs[1:]
-    sigma = estimate_noise_sigma(details[-1])
+    if sigma is None:
+        sigma = estimate_noise_sigma(details[-1])
     if sigma == 0.0:
         return x.copy()
 
