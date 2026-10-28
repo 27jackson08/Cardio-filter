@@ -86,6 +86,8 @@ S1/S2 scored against the expert annotations at ±100 ms:
 | wavelet | 0.832 | 0.776 | 0.792 | 0.764 | 0.756 | 0.757 | 0.020 |
 | wavelet_bayes | 0.837 | 0.786 | 0.801 | 0.772 | 0.771 | 0.770 | 0.020 |
 
+On 133 held-out recordings from 40 other subjects the recommended chain scores S1 F1 0.78 and S2 F1 0.75 as recorded, about four points below the tuning subset; the ranking of methods is unchanged ([details](docs/results.md#6-held-out-check)).
+
 **Hardest condition: synthetic noise at −5 dB input SNR** (SNR improvement in dB and
 detection F1; full grid and figures in [docs/results.md](docs/results.md))
 

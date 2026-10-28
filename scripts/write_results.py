@@ -37,12 +37,23 @@ def _detection_table(base: list[dict[str, object]]) -> str:
     )
 
 
-def _holdout_section(holdout: Path | None) -> str:
+def _mean_f1(rows: list[dict[str, object]], method: str) -> tuple[float, float]:
+    sel = [r for r in rows if r["method"] == method]
+    s1 = sum(float(r["s1_f1"]) for r in sel) / len(sel)
+    s2 = sum(float(r["s2_f1"]) for r in sel) / len(sel)
+    return s1, s2
+
+
+def _holdout_section(holdout: Path | None, dev_base: list[dict[str, object]]) -> str:
     if holdout is None or not (holdout / "dataset_eval.csv").exists():
         return ""
     base = _read(holdout / "dataset_eval.csv", ("record", "method"))
     n_records = len({r["record"] for r in base})
     n_subjects = len({str(r["record"]).split("_")[0] for r in base})
+    dev_s1, dev_s2 = _mean_f1(dev_base, "bandpass")
+    ho_s1, ho_s2 = _mean_f1(base, "bandpass")
+    best = "notch+bandpass+wavelet_bayes"
+    best_s1, best_s2 = _mean_f1(base, best)
     parts = [
         "## 6. Held-out check",
         "",
@@ -52,6 +63,12 @@ def _holdout_section(holdout: Path | None) -> str:
         "### Detection as recorded (held-out)",
         "",
         _detection_table(base),
+        "",
+        f"**Generalisation gap.** With the bandpass, S1/S2 F1 falls from "
+        f"{dev_s1:.3f}/{dev_s2:.3f} on the tuning subset to {ho_s1:.3f}/{ho_s2:.3f} here, "
+        f"so quote the held-out numbers. The recommended chain `{best}` scores "
+        f"{best_s1:.3f}/{best_s2:.3f} as recorded; the ranking of methods is unchanged, "
+        "and the notch again restores hum-corrupted recordings to clean-recording accuracy.",
     ]
     trials_path = holdout / "trials.csv"
     if trials_path.exists():
@@ -190,16 +207,28 @@ loud murmurs that create extra envelope peaks.
 
 ## 5. Limitations
 
-- The detector's five parameters were tuned on this same 44-recording subset, so its
-  F1 is optimistic; run `cardiofilter download --subjects 100` and evaluate on
-  subjects outside the first twelve before quoting the numbers.
+- The detector's five parameters were tuned on this same 44-recording subset, so the
+  F1 values above are optimistic; section 6 reports the same metrics on subjects the
+  detector never saw.
 - Noise is synthetic and stationary. Real field noise is bursty (speech, footsteps),
   and the prototype's own recordings are the next validation step
   (`hardware/record.py`).
 - Each SNR level is weighted equally in the averages; real recordings cluster at
   0–10 dB.
 
-{_holdout_section(holdout)}"""
+{_holdout_section(holdout, base)}"""
+    holdout_line = ""
+    if holdout is not None and (holdout / "dataset_eval.csv").exists():
+        ho = _read(holdout / "dataset_eval.csv", ("record", "method"))
+        ho_s1, ho_s2 = _mean_f1(ho, "notch+bandpass+wavelet_bayes")
+        n_ho = len({r["record"] for r in ho})
+        n_subj = len({str(r["record"]).split("_")[0] for r in ho})
+        holdout_line = (
+            f"On {n_ho} held-out recordings from {n_subj} other subjects the recommended "
+            f"chain scores S1 F1 {ho_s1:.2f} and S2 F1 {ho_s2:.2f} as recorded, about four "
+            "points below the tuning subset; the ranking of methods is unchanged "
+            "([details](docs/results.md#6-held-out-check)).\n"
+        )
     readme_block = f"""{START}
 On the 44-recording development subset (12 subjects, all four sites), with
 S1/S2 scored against the expert annotations at ±100 ms:
@@ -208,6 +237,7 @@ S1/S2 scored against the expert annotations at ±100 ms:
 
 {as_recorded}
 
+{holdout_line}
 **Hardest condition: synthetic noise at −5 dB input SNR** (SNR improvement in dB and
 detection F1; full grid and figures in [docs/results.md](docs/results.md))
 

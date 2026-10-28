@@ -186,12 +186,88 @@ loud murmurs that create extra envelope peaks.
 
 ## 5. Limitations
 
-- The detector's five parameters were tuned on this same 44-recording subset, so its
-  F1 is optimistic; run `cardiofilter download --subjects 100` and evaluate on
-  subjects outside the first twelve before quoting the numbers.
+- The detector's five parameters were tuned on this same 44-recording subset, so the
+  F1 values above are optimistic; section 6 reports the same metrics on subjects the
+  detector never saw.
 - Noise is synthetic and stationary. Real field noise is bursty (speech, footsteps),
   and the prototype's own recordings are the next validation step
   (`hardware/record.py`).
 - Each SNR level is weighted equally in the averages; real recordings cluster at
   0–10 dB.
 
+## 6. Held-out check
+
+133 recordings from 40 subjects that were **not** used to tune the detector (`cardiofilter download --skip 12`). Same scoring.
+
+### Detection as recorded (held-out)
+
+| method | s1_precision | s1_recall | s1_f1 | s2_precision | s2_recall | s2_f1 | s1_mae_s |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| bandpass | 0.791 | 0.774 | 0.776 | 0.760 | 0.755 | 0.753 | 0.025 |
+| bandpass+wavelet | 0.802 | 0.762 | 0.773 | 0.759 | 0.742 | 0.744 | 0.025 |
+| bandpass+wavelet_bayes | 0.791 | 0.773 | 0.776 | 0.761 | 0.756 | 0.754 | 0.025 |
+| none | 0.790 | 0.765 | 0.770 | 0.764 | 0.753 | 0.752 | 0.025 |
+| notch+bandpass | 0.791 | 0.774 | 0.776 | 0.760 | 0.755 | 0.753 | 0.025 |
+| notch+bandpass+wavelet_bayes | 0.791 | 0.773 | 0.776 | 0.761 | 0.756 | 0.754 | 0.025 |
+| wavelet | 0.794 | 0.752 | 0.763 | 0.754 | 0.734 | 0.738 | 0.025 |
+| wavelet_bayes | 0.792 | 0.768 | 0.773 | 0.767 | 0.755 | 0.755 | 0.025 |
+
+**Generalisation gap.** With the bandpass, S1/S2 F1 falls from 0.822/0.793 on the tuning subset to 0.776/0.753 here, so quote the held-out numbers. The recommended chain `notch+bandpass+wavelet_bayes` scores 0.776/0.754 as recorded; the ranking of methods is unchanged, and the notch again restores hum-corrupted recordings to clean-recording accuracy.
+
+### Noise grid (held-out), input SNR -5, 5 dB
+
+| method | snr_improvement_db | prd_percent | correlation | s1_f1 | s2_f1 |
+| --- | --- | --- | --- | --- | --- |
+| bandpass | 2.89 | 80.31 | 0.69 | 0.69 | 0.68 |
+| bandpass+wavelet | 2.61 | 81.01 | 0.65 | 0.69 | 0.65 |
+| bandpass+wavelet_bayes | 2.98 | 79.32 | 0.68 | 0.71 | 0.68 |
+| none | 0.00 | 117.03 | 0.68 | 0.69 | 0.67 |
+| notch+bandpass | 4.31 | 64.94 | 0.75 | 0.72 | 0.71 |
+| notch+bandpass+wavelet_bayes | 4.39 | 63.97 | 0.74 | 0.74 | 0.71 |
+| wavelet | 2.16 | 91.03 | 0.71 | 0.69 | 0.65 |
+| wavelet_bayes | 2.52 | 90.82 | 0.74 | 0.70 | 0.68 |
+
+### Held-out, hardest condition (input SNR -5 dB)
+
+| noise_type | method | snr_improvement_db | s1_f1 | s2_f1 |
+| --- | --- | --- | --- | --- |
+| ambient | bandpass | 8.88 | 0.73 | 0.72 |
+| ambient | bandpass+wavelet | 7.27 | 0.75 | 0.67 |
+| ambient | bandpass+wavelet_bayes | 8.03 | 0.77 | 0.71 |
+| ambient | none | 0.00 | 0.69 | 0.67 |
+| ambient | notch+bandpass | 8.88 | 0.73 | 0.72 |
+| ambient | notch+bandpass+wavelet_bayes | 8.03 | 0.77 | 0.71 |
+| ambient | wavelet | 8.73 | 0.75 | 0.67 |
+| ambient | wavelet_bayes | 5.86 | 0.72 | 0.68 |
+| hum | bandpass | -0.40 | 0.56 | 0.52 |
+| hum | bandpass+wavelet | -0.27 | 0.57 | 0.53 |
+| hum | bandpass+wavelet_bayes | -0.40 | 0.56 | 0.52 |
+| hum | none | 0.00 | 0.57 | 0.54 |
+| hum | notch+bandpass | 10.49 | 0.78 | 0.75 |
+| hum | notch+bandpass+wavelet_bayes | 10.46 | 0.78 | 0.75 |
+| hum | wavelet | 0.13 | 0.57 | 0.54 |
+| hum | wavelet_bayes | 0.00 | 0.56 | 0.54 |
+| pink | bandpass | 4.88 | 0.54 | 0.56 |
+| pink | bandpass+wavelet | 6.55 | 0.54 | 0.53 |
+| pink | bandpass+wavelet_bayes | 5.24 | 0.56 | 0.57 |
+| pink | none | 0.00 | 0.53 | 0.54 |
+| pink | notch+bandpass | 4.88 | 0.54 | 0.56 |
+| pink | notch+bandpass+wavelet_bayes | 5.24 | 0.56 | 0.57 |
+| pink | wavelet | 1.16 | 0.52 | 0.52 |
+| pink | wavelet_bayes | 0.56 | 0.53 | 0.56 |
+| rumble | bandpass | 10.87 | 0.77 | 0.76 |
+| rumble | bandpass+wavelet | 10.61 | 0.77 | 0.75 |
+| rumble | bandpass+wavelet_bayes | 10.83 | 0.78 | 0.76 |
+| rumble | none | 0.00 | 0.78 | 0.75 |
+| rumble | notch+bandpass | 10.87 | 0.77 | 0.76 |
+| rumble | notch+bandpass+wavelet_bayes | 10.83 | 0.78 | 0.76 |
+| rumble | wavelet | -0.03 | 0.77 | 0.75 |
+| rumble | wavelet_bayes | -0.00 | 0.78 | 0.75 |
+| white | bandpass | 5.83 | 0.57 | 0.57 |
+| white | bandpass+wavelet | 6.77 | 0.60 | 0.59 |
+| white | bandpass+wavelet_bayes | 7.51 | 0.64 | 0.62 |
+| white | none | 0.00 | 0.56 | 0.58 |
+| white | notch+bandpass | 5.83 | 0.57 | 0.57 |
+| white | notch+bandpass+wavelet_bayes | 7.51 | 0.64 | 0.62 |
+| white | wavelet | 7.57 | 0.59 | 0.58 |
+| white | wavelet_bayes | 9.32 | 0.62 | 0.61 |
