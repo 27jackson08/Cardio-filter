@@ -37,7 +37,9 @@ def main(wav: str, out_dir: str) -> int:
         "original": record.signal,
         "noisy (0 dB)": noisy,
         "bandpass": apply_method("bandpass", noisy, record.fs),
-        "bandpass+wavelet": apply_method("bandpass+wavelet", noisy, record.fs),
+        "notch+bandpass+wavelet_bayes": apply_method(
+            "notch+bandpass+wavelet_bayes", noisy, record.fs
+        ),
     }
     viz.save_figure(
         viz.plot_waveform(
@@ -53,14 +55,16 @@ def main(wav: str, out_dir: str) -> int:
     )
     viz.save_figure(
         viz.plot_spectrogram(
-            stages["bandpass+wavelet"], record.fs, title=f"{record.name}: bandpass+wavelet"
+            stages["notch+bandpass+wavelet_bayes"],
+            record.fs,
+            title=f"{record.name}: notch+bandpass+wavelet_bayes",
         ),
         str(out / "spectrogram_denoised.png"),
     )
-    det = detect_heart_sounds(stages["bandpass+wavelet"], record.fs)
+    det = detect_heart_sounds(stages["notch+bandpass+wavelet_bayes"], record.fs)
     viz.save_figure(
         viz.plot_detection(
-            stages["bandpass+wavelet"],
+            stages["notch+bandpass+wavelet_bayes"],
             record.fs,
             det,
             record.segmentation,

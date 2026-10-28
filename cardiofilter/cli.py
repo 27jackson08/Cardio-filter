@@ -31,7 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_filter = sub.add_parser("filter", help="filter a WAV file and write the result")
     p_filter.add_argument("input")
-    p_filter.add_argument("--method", choices=sorted(FILTER_METHODS), default="bandpass+wavelet")
+    p_filter.add_argument(
+        "--method", choices=sorted(FILTER_METHODS), default="notch+bandpass+wavelet_bayes"
+    )
     p_filter.add_argument("--out", required=True)
 
     p_det = sub.add_parser("detect", help="detect S1/S2 in a WAV file")
@@ -42,7 +44,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_vis = sub.add_parser("visualize", help="waveform, spectrogram and detection figures")
     p_vis.add_argument("input")
-    p_vis.add_argument("--method", choices=sorted(FILTER_METHODS), default="bandpass+wavelet")
+    p_vis.add_argument(
+        "--method", choices=sorted(FILTER_METHODS), default="notch+bandpass+wavelet_bayes"
+    )
     p_vis.add_argument("--out-dir", default="figures")
     p_vis.add_argument("--seconds", type=float, default=6.0, help="window shown in waveform plots")
 

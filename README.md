@@ -14,7 +14,7 @@ paediatric dataset (5 272 recordings, 1 568 subjects) under controlled noise.
 | | |
 |---|---|
 | ![filtering stages](docs/figures/filtering_stages.png) | ![detection](docs/figures/detection_denoised.png) |
-| *Original → noisy (hum + hiss + rumble at 0 dB) → bandpass → bandpass + wavelet* | *S1 (blue) and S2 (orange) detected after denoising; triangles are the expert annotations* |
+| *Original → noisy (hum + hiss + rumble at 0 dB) → bandpass → notch + bandpass + BayesShrink wavelet* | *S1 (blue) and S2 (orange) detected after denoising; triangles are the expert annotations* |
 
 ## What is in the box
 
@@ -79,7 +79,10 @@ S1/S2 scored against the expert annotations at ±100 ms:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | bandpass | 0.851 | 0.807 | 0.822 | 0.797 | 0.795 | 0.793 | 0.020 |
 | bandpass+wavelet | 0.848 | 0.794 | 0.813 | 0.782 | 0.775 | 0.776 | 0.020 |
+| bandpass+wavelet_bayes | 0.853 | 0.810 | 0.824 | 0.799 | 0.796 | 0.795 | 0.020 |
 | none | 0.837 | 0.786 | 0.800 | 0.773 | 0.771 | 0.770 | 0.020 |
+| notch+bandpass | 0.851 | 0.807 | 0.822 | 0.797 | 0.795 | 0.793 | 0.020 |
+| notch+bandpass+wavelet_bayes | 0.853 | 0.810 | 0.824 | 0.799 | 0.796 | 0.795 | 0.020 |
 | wavelet | 0.832 | 0.776 | 0.792 | 0.764 | 0.756 | 0.757 | 0.020 |
 | wavelet_bayes | 0.837 | 0.786 | 0.801 | 0.772 | 0.771 | 0.770 | 0.020 |
 
@@ -90,27 +93,42 @@ detection F1; full grid and figures in [docs/results.md](docs/results.md))
 | --- | --- | --- | --- | --- |
 | ambient | bandpass | 8.95 | 0.77 | 0.78 |
 | ambient | bandpass+wavelet | 7.47 | 0.80 | 0.77 |
+| ambient | bandpass+wavelet_bayes | 8.13 | 0.82 | 0.81 |
 | ambient | none | 0.00 | 0.75 | 0.73 |
+| ambient | notch+bandpass | 8.95 | 0.77 | 0.78 |
+| ambient | notch+bandpass+wavelet_bayes | 8.13 | 0.82 | 0.81 |
 | ambient | wavelet | 9.01 | 0.80 | 0.77 |
 | ambient | wavelet_bayes | 6.04 | 0.76 | 0.73 |
 | hum | bandpass | -0.38 | 0.59 | 0.65 |
 | hum | bandpass+wavelet | -0.20 | 0.59 | 0.63 |
+| hum | bandpass+wavelet_bayes | -0.39 | 0.59 | 0.65 |
 | hum | none | 0.00 | 0.62 | 0.67 |
+| hum | notch+bandpass | 10.49 | 0.78 | 0.76 |
+| hum | notch+bandpass+wavelet_bayes | 10.42 | 0.78 | 0.76 |
 | hum | wavelet | 0.18 | 0.59 | 0.63 |
 | hum | wavelet_bayes | -0.00 | 0.61 | 0.66 |
 | pink | bandpass | 4.87 | 0.67 | 0.69 |
 | pink | bandpass+wavelet | 6.61 | 0.66 | 0.67 |
+| pink | bandpass+wavelet_bayes | 5.23 | 0.68 | 0.69 |
 | pink | none | 0.00 | 0.70 | 0.69 |
+| pink | notch+bandpass | 4.87 | 0.67 | 0.69 |
+| pink | notch+bandpass+wavelet_bayes | 5.23 | 0.68 | 0.69 |
 | pink | wavelet | 1.21 | 0.66 | 0.66 |
 | pink | wavelet_bayes | 0.57 | 0.69 | 0.68 |
 | rumble | bandpass | 10.90 | 0.82 | 0.79 |
 | rumble | bandpass+wavelet | 10.47 | 0.79 | 0.76 |
+| rumble | bandpass+wavelet_bayes | 10.82 | 0.81 | 0.78 |
 | rumble | none | 0.00 | 0.82 | 0.79 |
+| rumble | notch+bandpass | 10.90 | 0.82 | 0.79 |
+| rumble | notch+bandpass+wavelet_bayes | 10.82 | 0.81 | 0.78 |
 | rumble | wavelet | -0.05 | 0.79 | 0.76 |
 | rumble | wavelet_bayes | -0.00 | 0.82 | 0.79 |
 | white | bandpass | 5.89 | 0.74 | 0.73 |
 | white | bandpass+wavelet | 6.95 | 0.72 | 0.72 |
+| white | bandpass+wavelet_bayes | 7.48 | 0.76 | 0.74 |
 | white | none | 0.00 | 0.69 | 0.70 |
+| white | notch+bandpass | 5.89 | 0.74 | 0.73 |
+| white | notch+bandpass+wavelet_bayes | 7.48 | 0.76 | 0.74 |
 | white | wavelet | 7.81 | 0.70 | 0.70 |
 | white | wavelet_bayes | 9.39 | 0.74 | 0.72 |
 
@@ -119,11 +137,12 @@ Three findings carry over to the hardware:
 - **The right filter depends on the noise.** Bandpass beats everything on handling
   rumble (+10.9 dB) and matches the best on room noise; BayesShrink wavelets win on
   broadband hiss (+9.4 dB vs +5.9 dB) because they remove noise *inside* the passband.
-- **Nothing removes mains hum.** 50 Hz sits in the middle of the S1/S2 band and
-  survives every method, so shielding and a notch filter are the next steps.
-- **For locating S1/S2, bandpass is the safe default** (S1 F1 0.82, S2 F1 0.79,
-  20 ms timing error as recorded); wavelet thresholding alone can shave heart-sound
-  energy and slightly lower F1.
+- **Mains hum needs its own stage.** 50 Hz sits in the middle of the S1/S2 band and
+  survives bandpass and wavelets alike; a gated notch cascade recovers +10.5 dB and
+  restores detection F1 from 0.59 to 0.78 at −5 dB.
+- **The recommended chain is notch → bandpass → BayesShrink wavelet.** It has the
+  best S1/S2 localisation of every method as recorded (S1 F1 0.82, S2 F1 0.80, 20 ms
+  timing error) and under noise, and it is the CLI default.
 
 ![SNR improvement](docs/figures/snr_improvement.png)
 <!-- RESULTS:END -->
