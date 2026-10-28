@@ -70,3 +70,14 @@ def test_estimate_cardiac_period_fallbacks():
     pcg = generate_pcg(duration=10.0, heart_rate=60.0)
     env = shannon_energy_envelope(pcg.signal, pcg.fs)
     assert estimate_cardiac_period(env) == pytest.approx(1.0, abs=0.03)
+
+
+def test_estimate_cardiac_period_handles_negative_autocorrelation_peaks():
+    # A linear ramp plus alternating ripple: the ramp makes the autocorrelation
+    # negative across the physiological lag range, the ripple adds local maxima there.
+    values = np.linspace(-1.0, 1.0, 48)
+    values[1::2] += 0.4
+    env = Envelope(values=values, times=np.arange(48) / 100, fs=100.0)
+    assert estimate_cardiac_period(env) == pytest.approx(0.8)
+    with pytest.raises(ValueError):
+        estimate_cardiac_period(env, dominance=0.0)

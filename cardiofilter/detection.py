@@ -86,6 +86,8 @@ def estimate_cardiac_period(envelope: Envelope, dominance: float = 0.7) -> float
     if peaks.size == 0:
         return FALLBACK_PERIOD_S
     heights = segment[peaks]
+    if heights.max() <= 0:
+        return FALLBACK_PERIOD_S
     candidates = peaks[heights >= dominance * heights.max()]
     return float((lag_min + candidates[0]) / envelope.fs)
 
