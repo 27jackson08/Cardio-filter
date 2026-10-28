@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tsbuildinfo
+
+# Data (download with `cardiofilter download`)
+data/
+*.wav
+!tests/fixtures/*.wav
+
+# Experiment outputs
+results/
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

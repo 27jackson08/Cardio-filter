@@ -1,0 +1,11 @@
+item,example part,qty,unit cost (USD),notes
+Acoustic chest piece,Single-head nurse stethoscope (generic),1,6,Keep the diaphragm; cut the tubing 8-10 cm below the chest piece
+Electret microphone capsule,CUI CMC-9745-130T or generic 9.7 mm electret,1,1.5,Omnidirectional; -45 dB sensitivity; works with 2-10 V bias
+Microphone preamp,Adafruit MAX4466 breakout (adjustable gain),1,7,Alternative: MAX9814 with AGC disabled for consistent amplitude
+USB audio interface,Generic USB sound card with 3.5 mm mic input,1,8,Provides mic bias; records at 44.1/48 kHz; downsampled to 4 kHz in software
+3D-printed coupler,PETG or TPU print of hardware/coupler.scad,1,0.5,Seals the capsule to the tubing; ~4 g of filament
+Shielded cable,3.5 mm TRS cable or 2-core shielded wire,1,2,Shielding reduces 50/60 Hz mains pickup
+Battery or USB power,From the host laptop via the USB sound card,0,0,Avoid mains adapters near the mic to limit hum
+Silicone tubing,6 mm ID silicone tubing,10 cm,0.5,Shorter tubing = fewer resonances and less handling noise
+Foam/felt lining,Adhesive felt or closed-cell foam,1,0.5,Dampens enclosure resonance and handling noise
+Total,,,~26,Comparable commercial electronic stethoscopes cost US$300-500

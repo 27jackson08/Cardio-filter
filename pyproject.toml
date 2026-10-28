@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cardiofilter"
+version = "0.1.0"
+description = "Low-cost digital stethoscope prototype and heart-sound signal processing (bandpass vs wavelet denoising, S1/S2 detection) evaluated on the CirCor DigiScope dataset."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Jackson Bomongcag" }]
+keywords = ["phonocardiogram", "heart sounds", "stethoscope", "wavelet", "signal processing", "biomedical"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "PyWavelets>=1.5",
+  "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
+record = ["sounddevice>=0.4"]
+
+[project.scripts]
+cardiofilter = "cardiofilter.cli:main"
+
+[project.urls]
+Repository = "https://github.com/27jackson08/Cardio-filter"
+
+[tool.setuptools.packages.find]
+include = ["cardiofilter*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=cardiofilter --cov-report=term-missing --cov-fail-under=80"
+filterwarnings = ["error::RuntimeWarning:cardiofilter"]
+
+[tool.coverage.run]
+branch = true
+omit = ["cardiofilter/__main__.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
