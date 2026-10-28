@@ -59,13 +59,17 @@ def download_subset(
     n_subjects: int | None = 10,
     fetch_fn: Fetch = fetch,
     progress: Callable[[str], None] | None = None,
+    skip: int = 0,
 ) -> list[Path]:
-    """Download the index and the first ``n_subjects`` subjects into ``dest``.
+    """Download the index and ``n_subjects`` subjects (after ``skip``) into ``dest``.
 
     Existing files are skipped so the call can be resumed. Returns the paths written.
+    Use ``skip`` to fetch a held-out set disjoint from an earlier development subset.
     """
     if n_subjects is not None and n_subjects < 1:
         raise ValueError("n_subjects must be >= 1 or None for all")
+    if skip < 0:
+        raise ValueError("skip must be non-negative")
     dest = Path(dest)
     data_dir = dest / "training_data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -73,7 +77,7 @@ def download_subset(
     index_path = dest / INDEX_CSV
     if not index_path.exists():
         index_path.write_bytes(fetch_fn(f"{PHYSIONET_BASE}/{INDEX_CSV}"))
-    entries = parse_index(index_path.read_text())
+    entries = parse_index(index_path.read_text())[skip:]
     if n_subjects is not None:
         entries = entries[:n_subjects]
 

@@ -141,6 +141,9 @@ def test_filter_registry(pcg):
         "wavelet",
         "wavelet_bayes",
         "bandpass+wavelet",
+        "bandpass+wavelet_bayes",
+        "notch+bandpass",
+        "notch+bandpass+wavelet_bayes",
     }
     for name in FILTER_METHODS:
         out = apply_method(name, pcg.signal, pcg.fs)

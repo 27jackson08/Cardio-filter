@@ -61,3 +61,14 @@ def test_download_subset_validation(tmp_path):
         dataset.download_subset(tmp_path, n_subjects=0, fetch_fn=lambda u: b"")
     with pytest.raises(ValueError):
         dataset.fetch("http://physionet.org/x")
+
+
+def test_download_subset_skip_selects_later_subjects(tmp_path):
+    def fake_fetch(url: str) -> bytes:
+        return INDEX.encode() if url.endswith("training_data.csv") else b"payload"
+
+    written = dataset.download_subset(tmp_path, n_subjects=1, fetch_fn=fake_fetch, skip=1)
+    names = {p.name for p in written}
+    assert "9979.txt" in names and "2530.txt" not in names
+    with pytest.raises(ValueError):
+        dataset.download_subset(tmp_path, n_subjects=1, fetch_fn=fake_fetch, skip=-1)

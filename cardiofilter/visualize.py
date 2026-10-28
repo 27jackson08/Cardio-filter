@@ -40,6 +40,9 @@ METHOD_COLORS: Mapping[str, str] = {
     "wavelet": CATEGORICAL[1],
     "wavelet_bayes": CATEGORICAL[2],
     "bandpass+wavelet": CATEGORICAL[3],
+    "bandpass+wavelet_bayes": CATEGORICAL[4],
+    "notch+bandpass": CATEGORICAL[5],
+    "notch+bandpass+wavelet_bayes": CATEGORICAL[6],
 }
 S1_COLOR = CATEGORICAL[0]
 S2_COLOR = CATEGORICAL[1]

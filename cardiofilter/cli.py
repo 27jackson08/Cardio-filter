@@ -27,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_dl = sub.add_parser("download", help="download a CirCor DigiScope subset from PhysioNet")
     p_dl.add_argument("--dest", default="data/circor")
     p_dl.add_argument("--subjects", type=int, default=10, help="number of subjects (0 = all)")
+    p_dl.add_argument("--skip", type=int, default=0, help="skip this many subjects first")
 
     p_filter = sub.add_parser("filter", help="filter a WAV file and write the result")
     p_filter.add_argument("input")
@@ -65,7 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def cmd_download(args: argparse.Namespace) -> int:
     n = None if args.subjects == 0 else args.subjects
-    written = download_subset(args.dest, n, progress=lambda m: print(m, file=sys.stderr))
+    written = download_subset(
+        args.dest, n, progress=lambda m: print(m, file=sys.stderr), skip=args.skip
+    )
     print(f"downloaded {len(written)} files to {Path(args.dest) / 'training_data'}")
     return 0
 

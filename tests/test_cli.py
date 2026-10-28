@@ -108,8 +108,10 @@ def test_experiment_command_empty_dir(tmp_path):
 
 def test_download_command_uses_fetch(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(
-        cli, "download_subset", lambda dest, n, progress=None: [Path("a"), Path("b")]
+        cli,
+        "download_subset",
+        lambda dest, n, progress=None, skip=0: [Path("a"), Path("b")] if skip == 3 else [],
     )
-    assert cli.main(["download", "--dest", str(tmp_path), "--subjects", "0"]) == 0
+    assert cli.main(["download", "--dest", str(tmp_path), "--subjects", "0", "--skip", "3"]) == 0
     assert "downloaded 2 files" in capsys.readouterr().out
     assert np is not None
