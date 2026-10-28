@@ -40,20 +40,33 @@ def main(wav: str, out_dir: str) -> int:
         "bandpass+wavelet": apply_method("bandpass+wavelet", noisy, record.fs),
     }
     viz.save_figure(
-        viz.plot_waveform(stages, record.fs, title=f"{record.name}: filtering stages", time_range=WINDOW),
+        viz.plot_waveform(
+            stages, record.fs, title=f"{record.name}: filtering stages", time_range=WINDOW
+        ),
         str(out / "filtering_stages.png"),
     )
     viz.save_figure(
-        viz.plot_spectrogram(noisy, record.fs, title=f"{record.name}: noisy (hum + hiss + rumble, 0 dB)"),
+        viz.plot_spectrogram(
+            noisy, record.fs, title=f"{record.name}: noisy (hum + hiss + rumble, 0 dB)"
+        ),
         str(out / "spectrogram_noisy.png"),
     )
     viz.save_figure(
-        viz.plot_spectrogram(stages["bandpass+wavelet"], record.fs, title=f"{record.name}: bandpass+wavelet"),
+        viz.plot_spectrogram(
+            stages["bandpass+wavelet"], record.fs, title=f"{record.name}: bandpass+wavelet"
+        ),
         str(out / "spectrogram_denoised.png"),
     )
     det = detect_heart_sounds(stages["bandpass+wavelet"], record.fs)
     viz.save_figure(
-        viz.plot_detection(stages["bandpass+wavelet"], record.fs, det, record.segmentation, title=f"{record.name}: detection after denoising", time_range=WINDOW),
+        viz.plot_detection(
+            stages["bandpass+wavelet"],
+            record.fs,
+            det,
+            record.segmentation,
+            title=f"{record.name}: detection after denoising",
+            time_range=WINDOW,
+        ),
         str(out / "detection_denoised.png"),
     )
     print(f"wrote 4 figures to {out}")
